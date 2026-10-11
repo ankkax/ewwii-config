@@ -1,0 +1,305 @@
+// ===========================================================================
+//  eww - Omarchy-style bar for OXWM (X11)
+//
+//  Palette lives in theme.scss. Switch with:  scripts/set-theme.sh <name>
+//  (themes are in ./themes/*.scss)
+// ===========================================================================
+
+@import "theme";
+
+* {
+  all: unset;
+  font-family: "JetBrainsMono Nerd Font", monospace;
+  font-size: 18px;
+  /* NB: no `color` here.  `*` matches every widget including labels, which
+     would override a colour set on a parent eventbox and silently break
+     :hover / .current / .active states.  Colour is set on .bar and inherited. */
+}
+
+.bar {
+  background-color: rgba($bg, 0.72);
+  color: $fg;
+  padding: 0 10px;
+}
+
+/* sections ---------------------------------------------------------------- */
+.left   { margin-left: 2px; }
+.right  { margin-right: 2px; }
+
+/* menu - Arch Linux logo (U+F303, JetBrainsMono Nerd Font).               */
+/* Its ink is 1.00em while the monospace advance is only 0.60em, so the     */
+/* label needs an explicit width >= the ink; it is left-aligned (:xalign 0) */
+/* because the glyph ink starts at the pen origin.                          */
+.logo {
+  padding: 0 8px 0 4px;
+}
+.logo-glyph {
+  font-family: "JetBrainsMono Nerd Font";
+  font-size: 21px;
+  color: $fg;
+}
+.logo:hover .logo-glyph { color: $accent; }
+
+/* workspaces -------------------------------------------------------------- */
+.workspaces { margin-left: 6px; }
+.ws {
+  padding: 0 3px;
+  margin: 0 1px;
+}
+/* active workspace uses md-square_rounded (0.75em ink vs 0.60em advance),
+   so its glyph is clipped on the right without a wider label. */
+.ws label { min-width: 17px; }
+.ws.vacant  { opacity: 0.5; }
+.ws.current { color: $accent; }
+.ws:hover   { color: $accent; }
+
+/* centre ------------------------------------------------------------------ */
+.clock       { margin: 0 8px; }
+.clock-text  { font-weight: bold; }
+.clock:hover .clock-text { color: $accent; }
+.weather     { margin: 0 6px; color: $dim; }
+.weather:hover { color: $accent; }
+
+/* keyboard layout (only shown with >1 layout, like Omarchy) --------------- */
+.kbl        { color: $dim; font-size: 15px; margin: 0 4px; }
+.kbl:hover  { color: $accent; }
+
+/* pending updates (shown only when updates wait, like Omarchy) ------------ */
+.upd        { color: $warn; margin: 0 4px; }
+.upd:hover  { color: $accent; }
+
+/* right-hand indicators --------------------------------------------------- */
+.mod   { margin: 0; padding: 0 2px; }
+/* Nerd Font icon glyphs are far wider than the monospace cell (up to 1.154em
+   ink vs 0.60em advance), so GTK clips their right side. Each module label gets
+   an explicit :width in eww.yuck sized to its widest glyph (centred via
+   :xalign 0.5) so the full glyph is always drawn. */
+.mod:hover { color: $accent; }
+
+/* keep-awake icon: hidden until the pointer is over the bar (Omarchy-style),
+   still clickable while invisible */
+.caffeine        { opacity: 0; }
+.bar:hover .caffeine { opacity: 1; }
+.caffeine.active { opacity: 1; }
+
+/* battery percentage (toggled by right-clicking the power widget) ---------- */
+.pct        { color: $fg; font-size: 14px; margin: 0 2px 0 1px; }
+
+/* now playing (cliamp) ---------------------------------------------------- */
+.nowplaying { margin: 0 8px 0 2px; }
+.np-chip    { font-family: "JetBrainsMono Nerd Font"; font-size: 16px; color: $accent; }
+.np-track   { font-size: 14px; color: $fg; }
+.nowplaying:hover .np-track { color: $accent; }
+
+/* system tray ------------------------------------------------------------- */
+.tray         { margin: 0 6px 0 2px; }
+.tray-chevron { color: $dim; margin-right: 6px; }
+.tray-chevron:hover { color: $accent; }
+systray       { background: transparent; padding: 0; }
+
+/* on-screen display (volume / brightness) --------------------------------- */
+/* Mirrors Omarchy's OSD card: rounded, near-opaque, icon + bar + readout.    */
+.osd-card {
+  background-color: rgba($bg, 0.97);
+  border: 2px solid rgba($dim, 0.55);
+  border-radius: 12px;
+  padding: 16px;
+  color: $fg;
+}
+.osd-icon  { font-family: "JetBrainsMono Nerd Font"; font-size: 26px; color: $fg; }
+.osd-track { background-color: rgba($fg, 0.45); border-radius: 4px; }
+.osd-fill  { background-color: $accent; border-radius: 4px; }
+.osd-pct   { font-weight: bold; font-size: 18px; color: $fg; }
+
+/* pop-up panels (network / volume / brightness) --------------------------- */
+/* A full-screen transparent backdrop is mapped behind the panels; clicking  */
+/* it closes them (click-outside, like Omarchy).                             */
+.popback, .popback-fill { background-color: transparent; }
+
+.panel {
+  background-color: rgba($bg, 0.97);
+  border: 2px solid rgba($dim, 0.55);
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: $fg;
+}
+
+.panel-head  { margin-bottom: 12px; }
+.panel-title { font-weight: bold; font-size: 17px; color: $fg; }
+.panel-close { color: $dim; padding: 0 2px; }
+.panel-close:hover { color: $alert; }
+
+.panel-icon { font-family: "JetBrainsMono Nerd Font"; font-size: 24px; color: $fg; }
+.panel-icon-btn:hover .panel-icon { color: $accent; }
+.panel-pct  { font-weight: bold; font-size: 16px; color: $fg; }
+
+.panel-btn {
+  background-color: rgba($fg, 0.10);
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: $fg;
+  font-size: 15px;
+}
+.panel-btn:hover { background-color: $accent; color: $bg; }
+
+/* GTK scale (slider) - restore what the global `all: unset` stripped. */
+.panel-scale { min-height: 18px; }
+.panel-scale trough {
+  background-color: rgba($fg, 0.20);
+  border-radius: 4px;
+  min-height: 8px;
+}
+.panel-scale trough highlight {
+  background-color: $accent;
+  border-radius: 4px;
+  min-height: 8px;
+}
+.panel-scale slider {
+  background-color: $fg;
+  border-radius: 50%;
+  min-width: 15px;
+  min-height: 15px;
+  margin: -4px 0;
+}
+.panel-scale value { color: transparent; }
+
+/* network panel ----------------------------------------------------------- */
+.net-toggle {
+  background-color: rgba($fg, 0.10);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 15px;
+  color: $fg;
+}
+.net-toggle:hover   { background-color: rgba($fg, 0.18); }
+.net-toggle.enabled { color: $accent; }
+
+.net-row { padding: 7px 8px; border-radius: 8px; }
+.net-row:hover      { background-color: rgba($fg, 0.10); }
+.net-row.connected  { background-color: rgba($accent, 0.26); }
+
+.net-glyph { font-family: "JetBrainsMono Nerd Font"; font-size: 18px; color: $fg; }
+.net-ssid  { font-size: 15px; color: $fg; }
+.net-lock  { color: $dim; font-size: 13px; }
+.net-sig   { color: $dim; font-size: 13px; }
+.net-check { font-family: "JetBrainsMono Nerd Font"; font-size: 14px; color: $dim; }
+
+/* the network we are currently on: accent throughout + a check mark */
+.net-row.connected .net-ssid  { color: $accent; font-weight: bold; }
+.net-row.connected .net-glyph { color: $accent; }
+.net-row.connected .net-lock  { color: $accent; }
+.net-row.connected .net-sig   { color: $accent; }
+.net-row.connected .net-check { color: $accent; }
+
+/* "Connected to <ssid>" line under the Wi-Fi toggle */
+.net-now       { margin: 0 2px; }
+.net-now-text  { color: $dim; font-size: 14px; }
+.net-now-ssid  { color: $accent; font-size: 14px; font-weight: bold; }
+
+/* power panel (battery + asusctl profiles + session) ---------------------- */
+.power-hero { margin-bottom: 2px; }
+.power-hero-icon   { font-family: "JetBrainsMono Nerd Font"; font-size: 30px; color: $fg; }
+.power-hero-title  { font-size: 15px; font-weight: bold; color: $fg; }
+.power-hero-status { font-size: 12px; color: $dim; letter-spacing: 1px; }
+.power-hero-pct    { font-size: 26px; font-weight: bold; color: $fg; }
+
+.power-bar   { margin: 2px 0; }
+.power-track { background-color: rgba($fg, 0.20); border-radius: 4px; }
+.power-fill  { background-color: $accent; border-radius: 4px; }
+
+.power-info         { margin: 0; }
+.power-info-label   { font-size: 13px; color: $dim; }
+.power-info-value   { font-size: 13px; color: $fg; }
+
+.power-section       { margin-top: 2px; }
+.power-section-title { font-size: 11px; font-weight: bold; color: $dim; letter-spacing: 1.5px; }
+
+.power-profiles { margin-top: 2px; }
+.power-prof {
+  background-color: rgba($fg, 0.08);
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+.power-prof:hover  { background-color: rgba($fg, 0.16); }
+.power-prof.active { background-color: rgba($accent, 0.26); }
+.power-prof-icon   { font-family: "JetBrainsMono Nerd Font"; font-size: 16px; color: $fg; }
+.power-prof-name   { font-size: 13px; color: $fg; }
+.power-prof.active .power-prof-icon { color: $accent; }
+.power-prof.active .power-prof-name { color: $accent; font-weight: bold; }
+
+.power-session { margin-top: 2px; }
+.power-btn {
+  background-color: rgba($fg, 0.10);
+  border-radius: 8px;
+  padding: 7px 12px;
+  color: $fg;
+  font-size: 14px;
+}
+.power-btn:hover        { background-color: $accent; color: $bg; }
+.power-btn.danger:hover { background-color: $alert;  color: $bg; }
+
+
+
+/* ewwii / GTK4 ------------------------------------------------------------ */
+/* ewwii maps each window itself; make the toplevel transparent so only the   */
+/* styled boxes (.bar / .panel / .osd-card) paint.                            */
+window { background-color: transparent; }
+
+/* bluetooth panel --------------------------------------------------------- */
+.bt-toggle {
+  background-color: rgba($fg, 0.10);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 15px;
+  color: $fg;
+}
+.bt-toggle:hover   { background-color: rgba($fg, 0.18); }
+.bt-toggle.enabled { color: $accent; }
+
+.bt-row { padding: 7px 8px; border-radius: 8px; }
+.bt-row:hover     { background-color: rgba($fg, 0.10); }
+.bt-row.connected { background-color: rgba($accent, 0.26); }
+
+.bt-glyph { font-family: "JetBrainsMono Nerd Font"; font-size: 18px; color: $fg; }
+.bt-name  { font-size: 15px; color: $fg; }
+.bt-batt  { font-size: 12px; color: $dim; }
+.bt-check { font-family: "JetBrainsMono Nerd Font"; font-size: 14px; color: $dim; }
+
+.bt-row.connected .bt-name  { color: $accent; font-weight: bold; }
+.bt-row.connected .bt-glyph { color: $accent; }
+.bt-row.connected .bt-batt  { color: $accent; }
+.bt-row.connected .bt-check { color: $accent; }
+
+/* calendar panel (GTK4 Calendar; `* { all: unset }` strips its theming) --- */
+.cal { padding: 4px 2px; }
+calendar { color: $fg; }
+calendar > header { padding: 2px 0 6px 0; }
+calendar > header > button {
+  color: $fg;
+  border-radius: 6px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 2px 8px;
+}
+calendar > header > button:hover { background-color: rgba($fg, 0.14); color: $accent; }
+calendar > grid > label {
+  padding: 3px 0;
+  border-radius: 6px;
+  color: $fg;
+}
+calendar > grid > label.day-name    { color: $dim; font-size: 12px; }
+calendar > grid > label.other-month { color: $dim; opacity: 0.45; }
+calendar > grid > label.week-number { color: $dim; font-size: 11px; }
+calendar > grid > label.today       { color: $accent; font-weight: bold; }
+calendar > grid > label:selected,
+calendar > grid > label:checked {
+  background-color: $accent;
+  color: $bg;
+  font-weight: bold;
+}
+
+/* weather panel ----------------------------------------------------------- */
+.wf-now  { font-size: 26px; color: $fg; }
+.wf-cond { font-size: 14px; color: $dim; }
+.wf-sep  { background-color: rgba($fg, 0.14); min-height: 1px; margin: 2px 0; }
+.wf-day  { font-size: 16px; color: $fg; }

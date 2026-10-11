@@ -1,0 +1,969 @@
+# ===========================================================================
+#  ewwii — Omarchy-style bar for OXWM (X11), GTK4 / ewwii port of eww.yuck
+#
+#  Start :  ewwii daemon  &&  ewwii open bar
+#  Reload:  ewwii reload
+#  Theme :  ~/.config/ewwii/scripts/set-theme.sh <name|menu>
+#
+#  Ported from the GTK3 eww config.  Notes on the port:
+#    * ewwii's config is evaluated ONCE, so `for x in <poll>` is impossible;
+#      the network list is filled at runtime by a Script{...} via
+#      find()/set_property() against pre-declared row widgets.
+#    * template strings use the GLOBAL NAME as the placeholder, i.e.
+#      global("vol_level").template("{vol_level}%") — `{self}` is invalid.
+#      Variable names therefore use underscores only (a `-` would be parsed
+#      as a subtraction inside a template).
+#    * no Systray widget in ewwii, and no CenterBox; the centre is emulated
+#      with a 3-way hexpand Box.  The tray module is dropped.
+#    * windows are `windowtype="dock"` (not wm_ignore): OXWM is patched to
+#      honour _NET_WM_WINDOW_TYPE_DOCK and _NET_WM_STRUT(_PARTIAL), so docks
+#      keep their exact geometry, are never tiled/focused, and stay above
+#      normal windows.  Only the bar reserves space (top 36px).
+# ===========================================================================
+
+import core.json
+import core.command
+
+# ------------------------------- data ------------------------------------
+Poll "weather" { interval = "900s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/weather.sh" }
+# weather panel (native ewwii pop-up): long "icon  condition  temp" line + 3-day rows
+Poll "wfc"    { interval = "900s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/weather.sh text" }
+Poll "wfd1"   { interval = "1800s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/wfcast.sh d1" }
+Poll "wfd2"   { interval = "1800s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/wfcast.sh d2" }
+Poll "wfd3"   { interval = "1800s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/wfcast.sh d3" }
+
+Poll "vol"  { interval = "5s"  initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh vol" }
+Poll "bat"  { interval = "5s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh bat" }
+
+Poll "bright"  { interval = "10s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh bright" }
+
+
+# Workspace (tag) state + label, pushed by scripts/tags-watch.sh.
+
+
+# battery-percentage toggle (right-click on power widget)
+
+# --------------------------------- OSD -----------------------------------
+Poll "osd_icon" { interval = "3600s" initial = ""  cmd = "echo ''" }
+Poll "osd_pct"  { interval = "3600s" initial = "0%" cmd = "echo 0%" }
+Poll "osd_fill" { interval = "3600s" initial = "0" cmd = "echo 0" }
+
+# ------------------------------- panels ----------------------------------
+Poll "vol_level"    { interval = "2s" initial = "0"     cmd = "pamixer --get-volume 2>/dev/null || echo 0" }
+Poll "bright_level" { interval = "5s" initial = "50"    cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/bright-level.sh" }
+Poll "iclose"       { interval = "3600s" initial = ""   cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh close" }
+
+# Panel strings that eww's template engine can express but ewwii's cannot
+# (hyphenated literals / parenthesised nested ternaries) are resolved by
+# scripts/panel-text.sh and bound directly.
+Poll "net_toggle_class" { interval = "10s" initial = "net-toggle"    cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/panel-text.sh nettoggle_class" }
+Poll "net_toggle_text"  { interval = "10s" initial = "Wi-Fi is off"  cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/panel-text.sh nettoggle_text" }
+Poll "net_now_text"     { interval = "10s" initial = "Not connected" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/panel-text.sh netnow_text" }
+Poll "net_now_ssid"     { interval = "10s" initial = ""              cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/panel-text.sh netnow_ssid" }
+Poll "batt_time_label"  { interval = "10s" initial = "Status"        cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/panel-text.sh batt_time_label" }
+Poll "batt_time_mode"   { interval = "10s" initial = "Power"         cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/panel-text.sh batt_time_mode" }
+
+Poll "batt_pct"    { interval = "5s"  initial = "0"       cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh batpct" }
+Poll "batt_fill"   { interval = "5s"  initial = "0"       cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh batfill" }
+# CPU usage glyph (bar) and tooltip
+
+# keep-awake state and glyph (xset)
+Poll "is_laptop"  { interval = "3600s" initial = "true"  cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh haslaptop" }
+Poll "is_desktop" { interval = "3600s" initial = "false" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh hasdesktop" }
+Poll "batt_status" { interval = "3s"  initial = "Battery" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh batstatus" }
+Poll "batt_rate"   { interval = "5s"  initial = ""        cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh batrate" }
+Poll "batt_size"   { interval = "30s" initial = ""        cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh batsize" }
+Poll "batt_cycles" { interval = "30s" initial = ""        cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh batcycles" }
+Poll "batt_time"   { interval = "5s"  initial = ""        cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh battime" }
+
+# active ASUS power profile name (asusctl); the three profiles themselves are
+# a fixed set and are hard-coded in the panel below.
+Poll "pactive" { interval = "10s" initial = "Balanced" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/pactive.sh" }
+
+# refresh rate remembered for battery (60 | 90 | 144); set by refresh-rate.sh
+Poll "refresh_pref" { interval = "3s" initial = "60" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/oxwm/scripts/refresh-rate.sh get" }
+
+# bluetooth panel + world clock ---------------------------------------------
+Poll "bt_toggle_class" { interval = "10s"  initial = "bt-toggle"       cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/bt-text.sh toggle_class" }
+Poll "bt_toggle_text"  { interval = "10s"  initial = "Bluetooth is off" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/bt-text.sh toggle_text" }
+
+# ================================= OSD ===================================
+component OsdCard () {
+    Box {
+        class = "osd-card"
+        orientation = "h"
+        space_evenly = false
+        spacing = 16
+
+        Label {
+            class = "osd-icon"
+            text = global("osd_icon")
+            width = 30
+            xalign = 0.5
+        }
+
+        OverLay {
+            class = "osd-bar"
+            width = 142
+            height = 8
+            valign = "center"
+
+            Box { class = "osd-track" height = 8 }
+            Box {
+                class = "osd-fill"
+                width = global("osd_fill")
+                height = 8
+                halign = "start"
+                valign = "center"
+            }
+        }
+
+        Label {
+            class = "osd-pct"
+            text = global("osd_pct")
+            width = 50
+            xalign = 1
+        }
+    }
+}
+
+Window "osd" {
+    monitor = 0
+    geometry = {
+        x = "0px"
+        y = "-67px"
+        width = "290px"
+        height = "72px"
+        anchor = "bottom center"
+    }
+    stacking = "fg"
+    windowtype = "dock"
+    focusable = "none"
+
+    OsdCard {}
+}
+
+# ============================ pop-up panels ==============================
+# A full-screen transparent backdrop ("popback") is mapped behind the panels
+# and closes them on click.  Only one panel is open at a time; see
+# scripts/panel.sh {open,close,toggle} <vol|bright|net|power>.
+
+component PanelHead (title) {
+    Box {
+        class = "panel-head"
+        orientation = "h"
+        space_evenly = false
+
+        Label { class = "panel-title" text = title hexpand = true xalign = 0 }
+
+        EventBox {
+            class = "panel-close"
+            timeout = "3s"
+            onclick = "/home/miika/.config/ewwii/scripts/panel.sh close"
+
+            Label { text = global("iclose") }
+        }
+    }
+}
+
+# ---- volume -------------------------------------------------------------
+component PanelVolCard () {
+    Box {
+        class = "panel"
+        orientation = "v"
+        space_evenly = false
+
+        PanelHead { title = "Audio" }
+
+        Box {
+            class = "panel-body"
+            orientation = "v"
+            space_evenly = false
+            spacing = 16
+
+            Box {
+                class = "panel-row"
+                orientation = "h"
+                space_evenly = false
+                spacing = 12
+
+                EventBox {
+                    class = "panel-icon-btn"
+                    timeout = "3s"
+                    onclick = "/home/miika/.config/ewwii/scripts/panel-vol.sh mute"
+
+                    Label { class = "panel-icon" text = global("vol") width = 30 xalign = 0.5 }
+                }
+
+                Scale {
+                    class = "panel-scale"
+                    width = 190
+                    min = 0
+                    max = 100
+                    draw_value = false
+                    value = global("vol_level")
+                    onchange = "/home/miika/.config/ewwii/scripts/panel-vol.sh set {}"
+                }
+
+                Label {
+                    class = "panel-pct"
+                    text = global("vol_level").template("{vol_level}%")
+                    width = 52
+                    xalign = 1
+                }
+            }
+
+            Box {
+                class = "panel-row"
+                orientation = "h"
+                space_evenly = false
+                spacing = 8
+
+                EventBox {
+                    class = "panel-btn"
+                    timeout = "3s"
+                    onclick = "/home/miika/.config/ewwii/scripts/panel-vol.sh down"
+                    Label { text = "-" }
+                }
+
+                EventBox {
+                    class = "panel-btn"
+                    timeout = "3s"
+                    onclick = "/home/miika/.config/ewwii/scripts/panel-vol.sh up"
+                    Label { text = "+" }
+                }
+
+                EventBox {
+                    class = "panel-btn wide"
+                    hexpand = true
+                    timeout = "3s"
+                    onclick = "/home/miika/.config/ewwii/scripts/panel-vol.sh mixer"
+                    Label { text = "Sound settings" }
+                }
+            }
+        }
+    }
+}
+
+# ---- brightness ---------------------------------------------------------
+component PanelBrightCard () {
+    Box {
+        class = "panel"
+        orientation = "v"
+        space_evenly = false
+
+        PanelHead { title = "Display" }
+
+        Box {
+            class = "panel-body"
+            orientation = "v"
+            space_evenly = false
+            spacing = 16
+
+            Box {
+                class = "panel-row"
+                orientation = "h"
+                space_evenly = false
+                spacing = 12
+
+                Label { class = "panel-icon" text = global("bright") width = 30 xalign = 0.5 }
+
+                Scale {
+                    class = "panel-scale"
+                    width = 190
+                    min = 1
+                    max = 100
+                    draw_value = false
+                    value = global("bright_level")
+                    onchange = "/home/miika/.config/ewwii/scripts/panel-bright.sh set {}"
+                }
+
+                Label {
+                    class = "panel-pct"
+                    text = global("bright_level").template("{bright_level}%")
+                    width = 52
+                    xalign = 1
+                }
+            }
+        }
+    }
+}
+
+# ---- network ------------------------------------------------------------
+# The row widgets are declared up front and filled at runtime by NetFiller
+# below (ewwii cannot loop over a poll).
+component NetRow (i) {
+    EventBox {
+        widget_name = "netrow" + i
+        class = "net-row"
+        visible = "false"
+        timeout = "3s"
+
+        Box {
+            orientation = "h"
+            space_evenly = false
+            spacing = 10
+
+            Label { widget_name = "netglyph" + i class = "net-glyph" }
+            Label { widget_name = "netssid" + i  class = "net-ssid" hexpand = true xalign = 0 }
+            Label { widget_name = "netlock" + i  class = "net-lock" }
+            Label { widget_name = "netsig" + i   class = "net-sig" }
+            Label { widget_name = "netcheck" + i class = "net-check" width = 18 xalign = 1 }
+        }
+    }
+}
+
+component PanelNetCard () {
+    Box {
+        class = "panel"
+        orientation = "v"
+        space_evenly = false
+
+        PanelHead { title = "Network" }
+
+        Box {
+            class = "panel-body"
+            orientation = "v"
+            space_evenly = false
+            spacing = 10
+
+            EventBox {
+                class = global("net_toggle_class")
+                onclick = "setsid -f /home/miika/.config/ewwii/scripts/net-act.sh toggle-wifi"
+                Label { text = global("net_toggle_text") }
+            }
+
+            Box {
+                class = "net-now"
+                orientation = "h"
+                space_evenly = false
+                spacing = 6
+
+                Label {
+                    class = "net-now-text"
+                    text = global("net_now_text")
+                }
+
+                Label {
+                    class = "net-now-ssid"
+                    hexpand = true
+                    xalign = 0
+                    text = global("net_now_ssid")
+                }
+            }
+
+            Scroll {
+                class = "net-scroll"
+                height = 250
+                vscroll = true
+
+                Box {
+                    class = "net-list"
+                    orientation = "v"
+                    space_evenly = false
+
+                    NetRow { i = "0" }
+                    NetRow { i = "1" }
+                    NetRow { i = "2" }
+                    NetRow { i = "3" }
+                    NetRow { i = "4" }
+                    NetRow { i = "5" }
+                }
+            }
+
+            Box {
+                class = "panel-row"
+                orientation = "h"
+                space_evenly = false
+                spacing = 8
+
+                EventBox {
+                    class = "panel-btn wide"
+                    hexpand = true
+                    onclick = "setsid -f /home/miika/.config/ewwii/scripts/net-act.sh rescan"
+                    Label { text = "Rescan" }
+                }
+
+                EventBox {
+                    class = "panel-btn wide"
+                    hexpand = true
+                    onclick = "setsid -f /home/miika/.config/ewwii/scripts/net-act.sh dns"
+                    Label { text = "DNS" }
+                }
+            }
+        }
+    }
+}
+
+# ---- power --------------------------------------------------------------
+component PowerInfo (label, value) {
+    Box {
+        class = "power-info"
+        orientation = "h"
+        space_evenly = false
+        spacing = 8
+
+        Label { class = "power-info-label" text = label hexpand = true xalign = 0 }
+        Label { class = "power-info-value" text = value xalign = 1 }
+    }
+}
+
+component PowerProfile (name, icon) {
+    EventBox {
+        class = global("pactive").template("power-prof {" + "pactive == '" + name + "' ? 'active' : ''}")
+        timeout = "3s"
+        onclick = "/home/miika/.config/ewwii/scripts/panel-power.sh set " + name
+
+        Box {
+            orientation = "h"
+            space_evenly = false
+            spacing = 6
+
+            Label { class = "power-prof-icon" text = icon }
+            Label { class = "power-prof-name" text = name }
+        }
+    }
+}
+
+component RefreshRate (rate, icon) {
+    EventBox {
+        class = global("refresh_pref").template("power-prof {" + "refresh_pref == '" + rate + "' ? 'active' : ''}")
+        timeout = "3s"
+        onclick = "/home/miika/.config/oxwm/scripts/refresh-rate.sh set " + rate
+
+        Box {
+            orientation = "h"
+            space_evenly = false
+            spacing = 6
+
+            Label { class = "power-prof-icon" text = icon }
+            Label { class = "power-prof-name" text = rate + " Hz" }
+        }
+    }
+}
+
+component PanelPowerCard () {
+    Box {
+        class = "panel"
+        orientation = "v"
+        space_evenly = false
+
+        PanelHead { title = "Power" }
+
+        Box {
+            class = "panel-body"
+            orientation = "v"
+            space_evenly = false
+            spacing = 14
+
+            Box {
+                class = "power-hero"
+                visible = global("is_desktop")
+                orientation = "h"
+                space_evenly = false
+                spacing = 14
+
+                Label { class = "power-hero-icon" text = "󰍹" width = 34 xalign = 0.5 }
+
+                Box {
+                    orientation = "v"
+                    space_evenly = false
+                    spacing = 2
+                    hexpand = true
+                    valign = "center"
+
+                    Label { class = "power-hero-title"  text = "Desktop" xalign = 0 }
+                    Label { class = "power-hero-status" text = global("pactive").template("Profile: {pactive}") xalign = 0 }
+                }
+            }
+
+            Box {
+                class = "power-hero"
+                visible = global("is_laptop")
+                orientation = "h"
+                space_evenly = false
+                spacing = 14
+
+                Label { class = "power-hero-icon" text = global("bat") width = 34 xalign = 0.5 }
+
+                Box {
+                    orientation = "v"
+                    space_evenly = false
+                    spacing = 2
+                    hexpand = true
+                    valign = "center"
+
+                    Label { class = "power-hero-title"  text = "Battery" xalign = 0 }
+                    Label { class = "power-hero-status" text = global("batt_status") xalign = 0 }
+                }
+
+                Label { class = "power-hero-pct" text = global("batt_pct").template("{batt_pct}%") xalign = 1 }
+            }
+
+            OverLay {
+                class = "power-bar"
+                visible = global("is_laptop")
+                width = 300
+                height = 8
+                halign = "center"
+                valign = "center"
+
+                Box { class = "power-track" height = 8 }
+                Box {
+                    class = "power-fill"
+                    width = global("batt_fill")
+                    height = 8
+                    halign = "start"
+                    valign = "center"
+                }
+            }
+
+            Box {
+                class = "power-stats"
+                visible = global("is_laptop")
+                orientation = "h"
+                space_evenly = false
+                spacing = 20
+
+                Box {
+                    orientation = "v"
+                    space_evenly = false
+                    spacing = 6
+                    hexpand = true
+
+                    PowerInfo { label = "Battery size"  value = global("batt_size") }
+                    PowerInfo { label = "Charge cycles" value = global("batt_cycles") }
+                }
+
+                Box {
+                    orientation = "v"
+                    space_evenly = false
+                    spacing = 6
+                    hexpand = true
+
+                    PowerInfo {
+                        label = global("batt_time_label")
+                        value = global("batt_time")
+                    }
+                    PowerInfo {
+                        label = global("batt_time_mode")
+                        value = global("batt_rate")
+                    }
+                }
+            }
+
+            Box {
+                class = "power-section"
+                orientation = "v"
+                space_evenly = false
+                spacing = 8
+
+                Label { class = "power-section-title" text = "POWER PROFILE" xalign = 0 }
+
+                Box {
+                    class = "power-profiles"
+                    orientation = "h"
+                    space_evenly = false
+                    spacing = 6
+
+                    PowerProfile { name = "Quiet"       icon = "󰌪" }
+                    PowerProfile { name = "Balanced"       icon = "󰊚" }
+                    PowerProfile { name = "Performance"       icon = "󰓅" }
+                }
+            }
+
+            Box {
+                class = "power-section"
+                visible = global("is_laptop")
+                orientation = "v"
+                space_evenly = false
+                spacing = 8
+
+                Label { class = "power-section-title" text = "REFRESH RATE (ON BATTERY)" xalign = 0 }
+
+                Box {
+                    class = "power-profiles"
+                    orientation = "h"
+                    space_evenly = false
+                    spacing = 6
+
+                    RefreshRate { rate = "60"  icon = "󰍹" }
+                    RefreshRate { rate = "90"  icon = "󰍹" }
+                    RefreshRate { rate = "144" icon = "󰍹" }
+                }
+            }
+
+            Box {
+                class = "power-section"
+                orientation = "v"
+                space_evenly = false
+                spacing = 8
+
+                Label { class = "power-section-title" text = "SESSION" xalign = 0 }
+
+                Box {
+                    class = "power-session"
+                    orientation = "h"
+                    space_evenly = false
+                    spacing = 6
+
+                    EventBox {
+                        class = "power-btn"
+                        hexpand = true
+                        onclick = "setsid -f /home/miika/.config/ewwii/scripts/panel-power.sh session lock"
+                        Label { text = "Lock" }
+                    }
+                    EventBox {
+                        class = "power-btn"
+                        hexpand = true
+                        onclick = "setsid -f /home/miika/.config/ewwii/scripts/panel-power.sh session suspend"
+                        Label { text = "Suspend" }
+                    }
+                }
+
+                Box {
+                    class = "power-session"
+                    orientation = "h"
+                    space_evenly = false
+                    spacing = 6
+
+                    EventBox {
+                        class = "power-btn"
+                        hexpand = true
+                        onclick = "setsid -f /home/miika/.config/ewwii/scripts/panel-power.sh session logout"
+                        Label { text = "Logout" }
+                    }
+                    EventBox {
+                        class = "power-btn"
+                        hexpand = true
+                        onclick = "setsid -f /home/miika/.config/ewwii/scripts/panel-power.sh session reboot"
+                        Label { text = "Reboot" }
+                    }
+                }
+
+                Box {
+                    class = "power-session"
+                    orientation = "h"
+                    space_evenly = false
+                    spacing = 6
+
+                    EventBox {
+                        class = "power-btn danger"
+                        hexpand = true
+                        onclick = "setsid -f /home/miika/.config/ewwii/scripts/panel-power.sh session shutdown"
+                        Label { text = "Shutdown" }
+                    }
+                }
+            }
+        }
+    }
+}
+
+# ---- bluetooth ----------------------------------------------------------
+# Rows are declared up front and filled at runtime by BtFiller below (ewwii
+# cannot loop over a poll signal, same trick as the network panel).
+component BtRow (i) {
+    EventBox {
+        widget_name = "btrow" + i
+        class = "bt-row"
+        visible = "false"
+        timeout = "3s"
+
+        Box {
+            orientation = "h"
+            space_evenly = false
+            spacing = 10
+
+            Label { widget_name = "btglyph" + i class = "bt-glyph" }
+
+            Box {
+                orientation = "v"
+                space_evenly = false
+                spacing = 1
+                hexpand = true
+
+                Label { widget_name = "btname" + i class = "bt-name" xalign = 0 }
+                Label { widget_name = "btbatt" + i class = "bt-batt" xalign = 0 }
+            }
+
+            Label { widget_name = "btcheck" + i class = "bt-check" width = 18 xalign = 1 }
+        }
+    }
+}
+
+component PanelBtCard () {
+    Box {
+        class = "panel"
+        orientation = "v"
+        space_evenly = false
+
+        PanelHead { title = "Bluetooth" }
+
+        Box {
+            class = "panel-body"
+            orientation = "v"
+            space_evenly = false
+            spacing = 10
+
+            EventBox {
+                class = global("bt_toggle_class")
+                onclick = "setsid -f /home/miika/.config/ewwii/scripts/bt-act.sh toggle-power"
+                Label { text = global("bt_toggle_text") }
+            }
+
+            Scroll {
+                class = "bt-scroll"
+                height = 240
+                vscroll = true
+
+                Box {
+                    class = "bt-list"
+                    orientation = "v"
+                    space_evenly = false
+
+                    BtRow { i = "0" }
+                    BtRow { i = "1" }
+                    BtRow { i = "2" }
+                    BtRow { i = "3" }
+                    BtRow { i = "4" }
+                    BtRow { i = "5" }
+                }
+            }
+
+            Box {
+                class = "panel-row"
+                orientation = "h"
+                space_evenly = false
+                spacing = 8
+
+                EventBox {
+                    class = "panel-btn wide"
+                    hexpand = true
+                    onclick = "setsid -f /home/miika/.config/ewwii/scripts/bt-act.sh scan"
+                    Label { text = "Scan" }
+                }
+
+                EventBox {
+                    class = "panel-btn wide"
+                    hexpand = true
+                    onclick = "setsid -f alacritty -e bluetui"
+                    Label { text = "bluetui" }
+                }
+            }
+        }
+    }
+}
+
+# ---- calendar -----------------------------------------------------------
+component PanelCalCard () {
+    Box {
+        class = "panel"
+        orientation = "v"
+        space_evenly = false
+
+        PanelHead { title = "Calendar" }
+
+        Calendar {
+            class = "cal"
+            show_heading = true
+            show_day_names = true
+            show_week_numbers = true
+        }
+    }
+}
+
+# ---- weather ------------------------------------------------------------
+# Native ewwii panel (no terminal): a big "now" line plus a 3-day forecast.
+# Data comes from the weather / wfc / wfdN polls, so it is already populated
+# by the time the panel is opened.
+component PanelWeatherCard () {
+    Box {
+        class = "panel"
+        orientation = "v"
+        space_evenly = false
+
+        PanelHead { title = "Weather" }
+
+        Box {
+            class = "panel-body"
+            orientation = "v"
+            space_evenly = false
+            spacing = 10
+
+            Label { class = "wf-now"  text = global("weather") xalign = 0 }
+            Label { class = "wf-cond" text = global("wfc")     xalign = 0 }
+
+            Box { class = "wf-sep" }
+
+            Label { class = "wf-day" text = global("wfd1") xalign = 0 }
+            Label { class = "wf-day" text = global("wfd2") xalign = 0 }
+            Label { class = "wf-day" text = global("wfd3") xalign = 0 }
+
+            EventBox {
+                class = "panel-btn wide"
+                hexpand = true
+                onclick = "setsid -f /home/miika/.config/ewwii/scripts/wf-refresh.sh"
+                Label { text = "Refresh" }
+            }
+        }
+    }
+}
+
+Window "popback" {
+    monitor = 0
+    geometry = {
+        x = "0%"
+        y = "0px"
+        width = "100%"
+        height = "100%"
+        anchor = "top left"
+    }
+    stacking = "fg"
+    windowtype = "dock"
+    focusable = "none"
+
+    EventBox {
+        class = "popback"
+        timeout = "3s"
+        onclick = "/home/miika/.config/ewwii/scripts/panel.sh close"
+
+        Box { class = "popback-fill" }
+    }
+}
+
+Window "panel-vol" {
+    monitor = 0
+    geometry = { x = "-12px"  y = "44px"  width = "300px"  height = "172px"  anchor = "top right" }
+    stacking = "fg"
+    windowtype = "dock"
+    focusable = "none"
+
+    PanelVolCard {}
+}
+
+Window "panel-bright" {
+    monitor = 0
+    geometry = { x = "-12px"  y = "44px"  width = "300px"  height = "134px"  anchor = "top right" }
+    stacking = "fg"
+    windowtype = "dock"
+    focusable = "none"
+
+    PanelBrightCard {}
+}
+
+Window "panel-net" {
+    monitor = 0
+    geometry = { x = "-12px"  y = "44px"  width = "360px"  height = "440px"  anchor = "top right" }
+    stacking = "fg"
+    windowtype = "dock"
+    focusable = "none"
+
+    PanelNetCard {}
+}
+
+Window "panel-power" {
+    monitor = 0
+    geometry = { x = "-12px"  y = "44px"  width = "360px"  height = "432px"  anchor = "top right" }
+    stacking = "fg"
+    windowtype = "dock"
+    focusable = "none"
+
+    PanelPowerCard {}
+}
+
+Window "panel-bt" {
+    monitor = 0
+    geometry = { x = "-12px"  y = "44px"  width = "340px"  height = "384px"  anchor = "top right" }
+    stacking = "fg"
+    windowtype = "dock"
+    focusable = "none"
+
+    PanelBtCard {}
+}
+
+Window "panel-cal" {
+    monitor = 0
+    geometry = { x = "0px"  y = "44px"  width = "330px"  height = "358px"  anchor = "top center" }
+    stacking = "fg"
+    windowtype = "dock"
+    focusable = "none"
+
+    PanelCalCard {}
+}
+
+Window "panel-weather" {
+    monitor = 0
+    geometry = { x = "0px"  y = "44px"  width = "330px"  height = "292px"  anchor = "top center" }
+    stacking = "fg"
+    windowtype = "dock"
+    focusable = "none"
+
+    PanelWeatherCard {}
+}
+
+# ========================= network list filler ===========================
+# Fills the six pre-declared NetRow rows from net-list.sh every few seconds.
+# (ewwii cannot loop over a poll signal, so the rows are pre-created and
+# updated by name through the widget-control builtins instead.)
+Script {
+    every = "4s"
+
+    run = |w| {
+        let nets = json.parse(command.run_and_read("/home/miika/.config/ewwii/scripts/net-list.sh"))
+        let n = len(nets)
+
+        for i in 0..6 {
+            let row = "netrow" + to_string(i)
+
+            if i < n {
+                let net = nets[i]
+                set_property(find(w, row), "visible", "true")
+                set_property(find(w, row), "class",
+                    if net.connected { "net-row connected" } else { "net-row" })
+                set_property(find(w, row), "onclick",
+                    "setsid -f /home/miika/.config/ewwii/scripts/net-act.sh connect " + net.esc)
+
+                set_property(find(w, "netglyph" + to_string(i)), "text", net.glyph)
+                set_property(find(w, "netssid" + to_string(i)), "text", net.ssid)
+                set_property(find(w, "netlock" + to_string(i)), "text", net.lock)
+                set_property(find(w, "netsig" + to_string(i)), "text", net.pct)
+                set_property(find(w, "netcheck" + to_string(i)), "text", net.check)
+            } else {
+                set_property(find(w, row), "visible", "false")
+            }
+        }
+    }
+}
+
+# ========================= bluetooth list filler =========================
+# Same idea as the network filler: fill the six pre-declared BtRow rows from
+# bt-list.sh.  A click connects/disconnects depending on the current state.
+Script {
+    every = "5s"
+
+    run = |w| {
+        let devs = json.parse(command.run_and_read("/home/miika/.config/ewwii/scripts/bt-list.sh"))
+        let n = len(devs)
+
+        for i in 0..6 {
+            let row = "btrow" + to_string(i)
+
+            if i < n {
+                let d = devs[i]
+                set_property(find(w, row), "visible", "true")
+                set_property(find(w, row), "class",
+                    if d.connected { "bt-row connected" } else { "bt-row" })
+                set_property(find(w, row), "onclick",
+                    "setsid -f /home/miika/.config/ewwii/scripts/bt-act.sh " +
+                    (if d.connected { "disconnect " } else { "connect " }) + d.esc)
+
+                set_property(find(w, "btglyph" + to_string(i)), "text", d.glyph)
+                set_property(find(w, "btname" + to_string(i)), "text", d.name)
+                set_property(find(w, "btbatt" + to_string(i)), "text", d.battery)
+                set_property(find(w, "btcheck" + to_string(i)), "text", d.check)
+            } else {
+                set_property(find(w, row), "visible", "false")
+            }
+        }
+    }
+}

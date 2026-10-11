@@ -1,0 +1,344 @@
+# ===========================================================================
+#  ewwii — Omarchy-style bar for OXWM (X11), GTK4 / ewwii port of eww.yuck
+#
+#  Start :  ewwii daemon  &&  ewwii open bar
+#  Reload:  ewwii reload
+#  Theme :  ~/.config/ewwii/scripts/set-theme.sh <name|menu>
+#
+#  Ported from the GTK3 eww config.  Notes on the port:
+#    * ewwii's config is evaluated ONCE, so `for x in <poll>` is impossible;
+#      the network list is filled at runtime by a Script{...} via
+#      find()/set_property() against pre-declared row widgets.
+#    * template strings use the GLOBAL NAME as the placeholder, i.e.
+#      global("vol_level").template("{vol_level}%") — `{self}` is invalid.
+#      Variable names therefore use underscores only (a `-` would be parsed
+#      as a subtraction inside a template).
+#    * no Systray widget in ewwii, and no CenterBox; the centre is emulated
+#      with a 3-way hexpand Box.  The tray module is dropped.
+#    * windows are `windowtype="dock"` (not wm_ignore): OXWM is patched to
+#      honour _NET_WM_WINDOW_TYPE_DOCK and _NET_WM_STRUT(_PARTIAL), so docks
+#      keep their exact geometry, are never tiled/focused, and stay above
+#      normal windows.  Only the bar reserves space (top 36px).
+# ===========================================================================
+
+import core.json
+import core.command
+
+# ------------------------------- data ------------------------------------
+Poll "clock"   { interval = "5s"   initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/clock.sh" }
+Poll "weather" { interval = "900s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/weather.sh" }
+# weather panel (native ewwii pop-up): long "icon  condition  temp" line + 3-day rows
+
+Poll "vol"  { interval = "3s"  initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh vol" }
+Poll "volt" { interval = "3s"  initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh volt" }
+Poll "bat"  { interval = "3s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh bat" }
+Poll "batt" { interval = "3s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh batt" }
+Poll "batp" { interval = "3s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh batp" }
+Poll "net"  { interval = "10s"  initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh net" }
+Poll "nett" { interval = "10s"  initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh nett" }
+Poll "bt"   { interval = "10s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh bt" }
+Poll "btt"  { interval = "10s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh btt" }
+
+Poll "bright"  { interval = "10s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh bright" }
+Poll "brightt" { interval = "10s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh brightt" }
+Poll "kbl"     { interval = "30s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh kb" }
+Poll "kblt"    { interval = "30s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh kbt" }
+
+Poll "np"    { interval = "3s" initial = ""      cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/nowplaying.sh chip" }
+Poll "npt"   { interval = "3s" initial = ""      cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/nowplaying.sh text" }
+Poll "nptip" { interval = "3s" initial = ""      cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/nowplaying.sh tooltip" }
+Poll "npv"   { interval = "3s" initial = "false" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/nowplaying.sh visible" }
+
+# Workspace (tag) state + label, pushed by scripts/tags-watch.sh.
+Poll "ws0" { interval = "3600s" initial = "vacant" cmd = "echo vacant" }
+Poll "ws1" { interval = "3600s" initial = "vacant" cmd = "echo vacant" }
+Poll "ws2" { interval = "3600s" initial = "vacant" cmd = "echo vacant" }
+Poll "ws3" { interval = "3600s" initial = "vacant" cmd = "echo vacant" }
+Poll "ws4" { interval = "3600s" initial = "vacant" cmd = "echo vacant" }
+Poll "ws5" { interval = "3600s" initial = "vacant" cmd = "echo vacant" }
+Poll "ws6" { interval = "3600s" initial = "vacant" cmd = "echo vacant" }
+Poll "ws7" { interval = "3600s" initial = "vacant" cmd = "echo vacant" }
+Poll "ws8" { interval = "3600s" initial = "vacant" cmd = "echo vacant" }
+Poll "ws0l" { interval = "3600s" initial = "1" cmd = "echo 1" }
+Poll "ws1l" { interval = "3600s" initial = "2" cmd = "echo 2" }
+Poll "ws2l" { interval = "3600s" initial = "3" cmd = "echo 3" }
+Poll "ws3l" { interval = "3600s" initial = "4" cmd = "echo 4" }
+Poll "ws4l" { interval = "3600s" initial = "5" cmd = "echo 5" }
+Poll "ws5l" { interval = "3600s" initial = "6" cmd = "echo 6" }
+Poll "ws6l" { interval = "3600s" initial = "7" cmd = "echo 7" }
+Poll "ws7l" { interval = "3600s" initial = "8" cmd = "echo 8" }
+Poll "ws8l" { interval = "3600s" initial = "9" cmd = "echo 9" }
+
+Poll "upd"      { interval = "3600s" initial = ""      cmd = "echo ''" }
+Poll "updt"     { interval = "3600s" initial = ""      cmd = "echo ''" }
+Poll "updstate" { interval = "3600s" initial = "false" cmd = "echo false" }
+Poll "kblstate" { interval = "3600s" initial = "false" cmd = "echo false" }
+
+# battery-percentage toggle (right-click on power widget)
+Poll "bat_pct" { interval = "3600s" initial = "false" cmd = "echo false" }
+
+# --------------------------------- OSD -----------------------------------
+
+# ------------------------------- panels ----------------------------------
+
+# Panel strings that eww's template engine can express but ewwii's cannot
+# (hyphenated literals / parenthesised nested ternaries) are resolved by
+# scripts/panel-text.sh and bound directly.
+
+# CPU usage glyph (bar) and tooltip
+Poll "cpu"  { interval = "5s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh cpu" }
+Poll "cput" { interval = "5s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh cput" }
+
+# keep-awake state and glyph (xset)
+Poll "caffeine_state" { interval = "2s" initial = "off" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/caffeine.sh state" }
+Poll "caffeine_icon"  { interval = "2s" initial = ""    cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/caffeine.sh icon" }
+Poll "is_laptop"  { interval = "3600s" initial = "true"  cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh haslaptop" }
+
+# active ASUS power profile name (asusctl); the three profiles themselves are
+# a fixed set and are hard-coded in the panel below.
+
+# refresh rate remembered for battery (60 | 90 | 144); set by refresh-rate.sh
+
+# bluetooth panel + world clock ---------------------------------------------
+
+# ================================ widgets ================================
+
+# workspaces --------------------------------------------------------------
+component Ws (idx) {
+    EventBox {
+        class = global("ws" + idx).template("ws {ws" + idx + "}")
+        timeout = "2s"
+        onclick = "xdotool set_desktop " + idx
+        onscroll = "/home/miika/.config/ewwii/scripts/ws_scroll.sh '{}'"
+
+        Label {
+            text = global("ws" + idx + "l")
+        }
+    }
+}
+
+component Workspaces () {
+    Box {
+        class = "workspaces"
+        orientation = "h"
+        space_evenly = false
+
+        for i in ["0", "1", "2", "3", "4", "5", "6", "7", "8"] {
+            Ws { idx = i }
+        }
+    }
+}
+
+# now playing (cliamp) ----------------------------------------------------
+component Nowplaying () {
+    EventBox {
+        class = "mod nowplaying"
+        visible = global("npv")
+        tooltip = global("nptip")
+        timeout = "3s"
+        onclick = "/home/miika/.config/ewwii/scripts/nowplaying.sh toggle"
+        onrightclick = "/home/miika/.config/ewwii/scripts/nowplaying.sh next"
+        onscroll = "/home/miika/.config/ewwii/scripts/nowplaying.sh scroll {}"
+
+        Box {
+            orientation = "h"
+            space_evenly = false
+            spacing = 8
+
+            Label { class = "np-chip"  text = global("np")  width = 20  xalign = 0.5 }
+            Label { class = "np-track" text = global("npt") width = 290 xalign = 0 limit_width = 30 }
+        }
+    }
+}
+
+# centre clock ------------------------------------------------------------
+component Clock () {
+    EventBox {
+        class = "clock"
+        tooltip = "Calendar  ·  right-click: toggle date format"
+        onclick = "/home/miika/.config/ewwii/scripts/panel.sh toggle cal"
+        onrightclick = "/home/miika/.config/ewwii/scripts/clock-cycle.sh"
+
+        Label { class = "clock-text" text = global("clock") }
+    }
+}
+
+component KeyboardLayout () {
+    EventBox {
+        class = "mod kbl"
+        visible = global("kblstate")
+        tooltip = global("kblt")
+        timeout = "2s"
+        onclick = "/home/miika/.config/ewwii/scripts/kb-cycle.sh"
+
+        Label { text = global("kbl") }
+    }
+}
+
+component Weather () {
+    EventBox {
+        class = "weather"
+        tooltip = "Weather  ·  click: forecast"
+        onclick = "/home/miika/.config/ewwii/scripts/panel.sh toggle weather"
+        onrightclick = "notify-send -a ewwii Weather \"$(/home/miika/.config/ewwii/scripts/weather.sh text)\""
+
+        Label { text = global("weather") }
+    }
+}
+
+component Updates () {
+    EventBox {
+        class = "mod upd"
+        visible = global("updstate")
+        tooltip = global("updt")
+        onclick = "setsid -f /usr/bin/kitty --class pacman-update -o remember_window_size=no -o initial_window_width=1200 -o initial_window_height=700 -e bash -c 'clear; echo \"=========================================\"; echo \"           SYSTEM UPDATE\"; echo \"           sudo pacman -Syu\"; echo \"=========================================\"; echo; sudo pacman -Syu; echo; echo \"=========================================\"; read -n1 -r -p \"Paina näppäintä sulkeaksesi\"'"
+
+        Label { text = global("upd") width = 21 xalign = 0.5 }
+    }
+}
+
+# right-hand indicators ---------------------------------------------------
+component Bar () {
+    OverLay {
+        class = "bar"
+        hexpand = true
+
+        # left: Arch logo + workspaces + now playing
+        Box {
+            class = "left"
+            orientation = "h"
+            space_evenly = false
+            halign = "start"
+
+            EventBox {
+                class = "logo"
+                tooltip = "Menu  ·  right-click: terminal"
+                onclick = "setsid -f rofi -show drun -config ~/.config/rofi/config.rasi"
+                onrightclick = "setsid -f alacritty"
+
+                Label { class = "logo-glyph" text = "" width = 24 xalign = 0 }
+            }
+
+            Workspaces {}
+
+            Nowplaying {}
+        }
+
+        # centre: clock + weather + updates + keep-awake + keyboard layout
+        Box {
+            class = "center"
+            orientation = "h"
+            space_evenly = false
+            halign = "center"
+
+            Clock {}
+            Weather {}
+            Updates {}
+
+            EventBox {
+                class = global("caffeine_state").template("mod caffeine {caffeine_state == 'on' ? 'active' : ''}")
+                tooltip = global("caffeine_state").template("Keep awake: {caffeine_state}  ·  click to toggle")
+                onclick = "/home/miika/.config/ewwii/scripts/caffeine.sh toggle"
+                timeout = "3s"
+
+                Label { text = global("caffeine_icon") width = 17 xalign = 0.5 }
+            }
+
+            KeyboardLayout {}
+        }
+
+        # right: indicators
+        Box {
+            class = "right"
+            orientation = "h"
+            space_evenly = false
+            spacing = 2
+            halign = "end"
+
+            EventBox {
+                class = "mod bt"
+                tooltip = global("btt")
+                onclick = "/home/miika/.config/ewwii/scripts/panel.sh toggle bt"
+                onrightclick = "/home/miika/.config/ewwii/scripts/bt-toggle.sh"
+                timeout = "3s"
+
+                Label { text = global("bt") width = 17 xalign = 0.5 }
+            }
+
+            EventBox {
+                class = "mod"
+                tooltip = global("nett")
+                timeout = "3s"
+                onclick = "/home/miika/.config/ewwii/scripts/panel.sh toggle net"
+
+                Label { text = global("net") width = 25 xalign = 0.5 }
+            }
+
+            EventBox {
+                class = "mod"
+                tooltip = global("volt")
+                timeout = "3s"
+                onclick = "/home/miika/.config/ewwii/scripts/panel.sh toggle vol"
+                onrightclick = "/home/miika/.config/ewwii/scripts/osd.sh vol mute"
+                onscroll = "/home/miika/.config/ewwii/scripts/osd.sh scroll vol {}"
+
+                Label { text = global("vol") width = 32 xalign = 0.5 }
+            }
+
+            EventBox {
+                class = "mod"
+                tooltip = global("brightt")
+                visible = global("is_laptop")
+                timeout = "3s"
+                onclick = "/home/miika/.config/ewwii/scripts/panel.sh toggle bright"
+                onscroll = "/home/miika/.config/ewwii/scripts/osd.sh scroll bright {}"
+
+                Label { text = global("bright") width = 24 xalign = 0.5 }
+            }
+
+            EventBox {
+                class = "mod"
+                tooltip = global("cput")
+                timeout = "5s"
+                onclick = "setsid -f kitty btop"
+
+                Label { text = global("cpu") width = 20 xalign = 0.5 }
+            }
+
+            EventBox {
+                class = "mod power"
+                tooltip = global("batt")
+                visible = global("is_laptop")
+                timeout = "3s"
+                onclick = "/home/miika/.config/ewwii/scripts/panel.sh toggle power"
+                onrightclick = "/home/miika/.config/ewwii/scripts/toggle.sh bat_pct"
+
+                Box {
+                    orientation = "h"
+                    space_evenly = false
+
+                    Label { text = global("bat") width = 22 xalign = 0.5 }
+                    Label { class = "pct" text = global("batp") visible = global("bat_pct") }
+                }
+            }
+        }
+    }
+}
+
+Window "bar" {
+    monitor = 0
+    geometry = {
+        x = "0%"
+        y = "0px"
+        width = "100%"
+        height = "36px"
+        anchor = "top center"
+    }
+    stacking = "fg"
+    windowtype = "dock"
+    focusable = "none"
+    reserve = { side = "top" distance = "36px" }
+
+    Bar {}
+}
+
