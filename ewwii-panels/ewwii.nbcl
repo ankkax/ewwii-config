@@ -27,7 +27,7 @@ import core.command
 # ------------------------------- data ------------------------------------
 Poll "weather" { interval = "900s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/weather.sh" }
 # weather panel (native ewwii pop-up): long "icon  condition  temp" line + 3-day rows
-Poll "wfc"    { interval = "900s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/weather.sh text" }
+Poll "wfc"    { interval = "300s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/weather.sh text" }
 Poll "wfd1"   { interval = "1800s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/wfcast.sh d1" }
 Poll "wfd2"   { interval = "1800s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/wfcast.sh d2" }
 Poll "wfd3"   { interval = "1800s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/wfcast.sh d3" }
@@ -35,7 +35,7 @@ Poll "wfd3"   { interval = "1800s" initial = "" cmd = "/home/miika/.config/ewwii
 Poll "vol"  { interval = "5s"  initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh vol" }
 Poll "bat"  { interval = "5s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh bat" }
 
-Poll "bright"  { interval = "10s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh bright" }
+Poll "bright"  { interval = "3s" initial = "" cmd = "/home/miika/.config/ewwii/scripts/poll.sh /home/miika/.config/ewwii/scripts/status.sh bright" }
 
 
 # Workspace (tag) state + label, pushed by scripts/tags-watch.sh.
@@ -44,9 +44,9 @@ Poll "bright"  { interval = "10s" initial = "" cmd = "/home/miika/.config/ewwii/
 # battery-percentage toggle (right-click on power widget)
 
 # --------------------------------- OSD -----------------------------------
-Poll "osd_icon" { interval = "3600s" initial = ""  cmd = "echo ''" }
-Poll "osd_pct"  { interval = "3600s" initial = "0%" cmd = "echo 0%" }
-Poll "osd_fill" { interval = "3600s" initial = "0" cmd = "echo 0" }
+Poll "osd_icon" { interval = "3600s" initial = ""  cmd = "/home/miika/.config/ewwii/scripts/poll.sh cat /run/user/1000/eww-osd.icon" }
+Poll "osd_pct"  { interval = "3600s" initial = "0%" cmd = "/home/miika/.config/ewwii/scripts/poll.sh cat /run/user/1000/eww-osd.pct" }
+Poll "osd_fill" { interval = "3600s" initial = "0" cmd = "/home/miika/.config/ewwii/scripts/poll.sh cat /run/user/1000/eww-osd.fill" }
 
 # ------------------------------- panels ----------------------------------
 Poll "vol_level"    { interval = "2s" initial = "0"     cmd = "pamixer --get-volume 2>/dev/null || echo 0" }
@@ -863,7 +863,7 @@ Window "panel-net" {
 
 Window "panel-power" {
     monitor = 0
-    geometry = { x = "-12px"  y = "44px"  width = "360px"  height = "432px"  anchor = "top right" }
+    geometry = { x = "-12px"  y = "44px"  width = "420px"  height = "432px"  anchor = "top right" }
     stacking = "fg"
     windowtype = "dock"
     focusable = "none"

@@ -76,11 +76,16 @@
    :xalign 0.5) so the full glyph is always drawn. */
 .mod:hover { color: $accent; }
 
+
 /* keep-awake icon: hidden until the pointer is over the bar (Omarchy-style),
    still clickable while invisible */
 .caffeine        { opacity: 0; }
 .bar:hover .caffeine { opacity: 1; }
 .caffeine.active { opacity: 1; }
+
+.gamepad        { opacity: 0; }
+.bar:hover .gamepad { opacity: 1; }
+.gamepad.active { opacity: 1; }
 
 /* battery percentage (toggled by right-clicking the power widget) ---------- */
 .pct        { color: $fg; font-size: 14px; margin: 0 2px 0 1px; }
@@ -92,10 +97,17 @@
 .nowplaying:hover .np-track { color: $accent; }
 
 /* system tray ------------------------------------------------------------- */
-.tray         { margin: 0 6px 0 2px; }
 .tray-chevron { color: $dim; margin-right: 6px; }
 .tray-chevron:hover { color: $accent; }
-systray       { background: transparent; padding: 0; }
+.systray   { background: transparent; margin: 0 6px 0 2px; }
+.tray-item { padding: 0 4px; border-radius: 6px; }
+.tray-item:hover { background-color: rgba($fg, 0.10); }
+
+.tray-menu { background-color: rgba($bg, 0.96); border-radius: 8px; padding: 4px; border: 1px solid rgba($fg, 0.15); }
+.tray-menu-item { padding: 5px 12px; border-radius: 6px; font-size: 14px; color: $fg; }
+.tray-menu-item:hover { background-color: rgba($accent, 0.26); color: $accent; }
+.tray-menu-item:disabled { color: $dim; }
+.tray-menu separator { background-color: rgba($fg, 0.15); min-height: 1px; margin: 4px 0; }
 
 /* on-screen display (volume / brightness) --------------------------------- */
 /* Mirrors Omarchy's OSD card: rounded, near-opaque, icon + bar + readout.    */
@@ -303,3 +315,4 @@ calendar > grid > label:checked {
 .wf-cond { font-size: 14px; color: $dim; }
 .wf-sep  { background-color: rgba($fg, 0.14); min-height: 1px; margin: 2px 0; }
 .wf-day  { font-size: 16px; color: $fg; }
+

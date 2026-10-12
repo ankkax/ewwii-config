@@ -1,24 +1,20 @@
 #!/bin/bash
-# ws_scroll.sh <up|down> -- step one workspace per wheel burst.
-# A flick sends many wheel events; a burst (events less than GAP_MS apart)
-# counts as one step, and steps are at least COOLDOWN_MS apart.
-STATE="${XDG_RUNTIME_DIR:-/tmp}/ewwii-ws-scroll.state"
-GAP_MS=150
-COOLDOWN_MS=400
+# ws_scroll.sh <up|down> -- one workspace per wheel step, like the old eww bar:
+# scroll up goes to the previous workspace, down to the next (wrapping around).
+# Steps that arrive during COOLDOWN are dropped; the lock keeps this safe when
+# ewwii runs several copies at once. Other directions (left/right) are ignored.
+COOLDOWN=0.08
+LOCK="${XDG_RUNTIME_DIR:-/tmp}/ewwii-ws-scroll.lock"
 
-[ -z "$1" ] && exit 0
+desk() { xprop -root _NET_CURRENT_DESKTOP 2>/dev/null | sed 's/.*= //'; }
 
-NOW=$(date +%s%3N)
-[ -f "$STATE" ] && read -r LAST_SEEN LAST_STEP < "$STATE"
-LAST_SEEN=${LAST_SEEN:-0}
-LAST_STEP=${LAST_STEP:-0}
-
-echo "$NOW $LAST_STEP" > "$STATE"
-[ $((NOW - LAST_SEEN)) -lt "$GAP_MS" ] && exit 0
-[ $((NOW - LAST_STEP)) -lt "$COOLDOWN_MS" ] && exit 0
-
-echo "$NOW $NOW" > "$STATE"
 case "$1" in
-  up)   xdotool set_desktop --relative 1 ;;
-  down) xdotool set_desktop --relative -- -1 ;;
+  up)   step=-1 ;;
+  down) step=1 ;;
+  *)    exit 0 ;;
 esac
+
+exec 9>"$LOCK"
+flock -n 9 || exit 0
+xdotool set_desktop --relative -- "$step"
+sleep "$COOLDOWN"

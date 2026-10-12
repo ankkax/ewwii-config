@@ -48,14 +48,14 @@ case "${1:-}" in
           notify-send -a eww "Lock" "No screen locker installed (i3lock / hyprlock / swaylock)"
         fi
         ;;
-      suspend)  systemctl suspend ;;
+      suspend)  loginctl suspend ;;
       logout)
         sid="${XDG_SESSION_ID:-$(loginctl list-sessions --no-legend 2>/dev/null | awk -v u="$(id -un)" '$3==u{print $1; exit}')}"
         if [ -n "$sid" ]; then loginctl terminate-session "$sid" 2>/dev/null; fi
         pkill -x oxwm 2>/dev/null
         ;;
-      reboot)   systemctl reboot ;;
-      shutdown) systemctl poweroff ;;
+      reboot)   loginctl reboot ;;
+      shutdown) loginctl poweroff ;;
       *) echo "panel-power.sh: unknown session action '${2:-}'" >&2; exit 2 ;;
     esac
     "$PANEL" close >/dev/null 2>&1

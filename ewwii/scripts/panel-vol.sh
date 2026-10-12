@@ -3,7 +3,7 @@
 #   panel-vol.sh set <0-100>   (from the slider :onchange)
 #   panel-vol.sh mute
 #   panel-vol.sh up | down
-#   panel-vol.sh mixer         (open pavucontrol)
+#   panel-vol.sh mixer         (open pulsemixer in a floating kitty)
 EWW="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)/ewp"   # panels/OSD daemon
 
 clamp() {
@@ -25,5 +25,5 @@ case "${1:-}" in
     ;;
   up)    pamixer -i 5 >/dev/null 2>&1 ;;
   down)  pamixer -d 5 >/dev/null 2>&1 ;;
-  mixer) setsid pavucontrol >/dev/null 2>&1 & ;;
+  mixer) setsid -f kitty --class pulsemixer -e pulsemixer >/dev/null 2>&1 ;;
 esac

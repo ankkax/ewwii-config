@@ -24,6 +24,8 @@ case "$1" in
         else
             xset s off
             xset -dpms
+            # undo an idle dim that is already on
+            "$HOME/.config/oxwm/scripts/screentemp.sh" --resume >/dev/null 2>&1
         fi
         # push the new state straight away so the bar does not wait for the poll
         if is_on; then st=on; else st=off; fi

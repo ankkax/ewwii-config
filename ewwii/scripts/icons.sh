@@ -6,7 +6,7 @@
 I_WS_ACTIVE=$'\U000f14fb'   # md-square_rounded
 
 # cpu (Omarchy uses the md-memory glyph for cpu)
-I_CPU=$'\U000f035b'
+I_CPU=$'\U000f061a'
 
 # audio
 I_VOL_OFF=$'\uf026'         # fa-volume_off

@@ -66,6 +66,11 @@ paint_osd() {
     [ "$pct" -gt 100 ] && pct=100
     fill=$(( pct * BAR_W / 100 ))
 
+    # Also saved to files: opening the window re-runs the osd_* polls, which
+    # read these back, so the card never falls back to a placeholder.
+    printf '%s' "$icon" > "$RT/eww-osd.icon"
+    printf '%s' "${pct}%" > "$RT/eww-osd.pct"
+    printf '%s' "$fill" > "$RT/eww-osd.fill"
     "$EWW" update "osd_icon=\"$icon\",osd_pct=\"${pct}%\",osd_fill=\"$fill\"" \
         >/dev/null 2>&1
 
@@ -113,19 +118,19 @@ volume() {          # media keys / clicks
 # -- brightness -------------------------------------------------------------
 render_brightness() {
     local p
-    p=$(brightnessctl -m 2>/dev/null | awk -F, '{gsub(/[^0-9]/,"",$4); print $4}')
+    p=$("$DIR/bright.sh" pct 2>/dev/null | tr -dc '0-9')
     [ -z "$p" ] && p=0
-    paint_osd "$I_BRIGHT" "$p"
+    paint_osd "$("$DIR/bright.sh" icon 2>/dev/null)" "$p"
 }
 
 brightness() {      # media keys / clicks
     case "$1" in
-        up)   brightnessctl set "+${STEP_KEY}%"  >/dev/null 2>&1 ;;
-        down) brightnessctl set "${STEP_KEY}%-"  >/dev/null 2>&1 ;;
-        max)  brightnessctl set 100%            >/dev/null 2>&1 ;;
-        min)  brightnessctl set 1%              >/dev/null 2>&1 ;;
-        set)  brightnessctl set "$2"            >/dev/null 2>&1 ;;
-    esac
+        up)   "$DIR/bright.sh" step "+${STEP_KEY}" ;;
+        down) "$DIR/bright.sh" step "-${STEP_KEY}" ;;
+        max)  "$DIR/bright.sh" set 100 ;;
+        min)  "$DIR/bright.sh" set 1 ;;
+        set)  "$DIR/bright.sh" set "${2%\%}" ;;
+    esac >/dev/null 2>&1
     render_brightness
     arm_timer "$DEFAULT_MS"
 }
@@ -150,9 +155,9 @@ run_scroll() {
                 render_volume ;;
             bright)
                 if [ "$dir" = up ]; then
-                    brightnessctl set "+${STEP_SCROLL}%" >/dev/null 2>&1
+                    "$DIR/bright.sh" step "+${STEP_SCROLL}" >/dev/null 2>&1
                 else
-                    brightnessctl set "${STEP_SCROLL}%-" >/dev/null 2>&1
+                    "$DIR/bright.sh" step "-${STEP_SCROLL}" >/dev/null 2>&1
                 fi
                 render_brightness ;;
         esac

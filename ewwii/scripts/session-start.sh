@@ -28,3 +28,4 @@ done
 
 setsid "$DIR/tags-watch.sh" >/dev/null 2>&1 </dev/null &
 setsid "$DIR/screen-watch.sh" >/dev/null 2>&1 </dev/null &
+pgrep -x ws-wheel >/dev/null || setsid "$HOME/.local/bin/ws-wheel" "$DIR/ws_scroll.sh" >/dev/null 2>&1 </dev/null &

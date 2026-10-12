@@ -44,6 +44,16 @@ bat_icon() {
   esac
 }
 
+pprof_name() { "$(dirname "$(readlink -f "$0")")/pactive.sh" 2>/dev/null; }
+pprof_icon() {
+  case "$(pprof_name)" in
+    Quiet)       printf '%s' $'\U000f032a' ;;
+    Balanced)    printf '%s' $'\U000f0f85' ;;
+    Performance) printf '%s' $'\U000f04c5' ;;
+  esac
+}
+pprof_text() { printf 'Profile: %s' "$(pprof_name)"; }
+
 bat_text() {
   local d; d="$(bat_dev)"
   if [ -z "$d" ]; then echo "AC power"; return; fi
@@ -103,8 +113,8 @@ bt_text() {
 
 # --- Omarchy quattro widgets ------------------------------------------------
 # display / monitor (brightness)
-bright_pct() { brightnessctl -m 2>/dev/null | cut -d, -f4 | tr -d '%'; }
-bright_icon() { printf '%s' "$I_BRIGHT"; }
+bright_pct() { "$(dirname "$(readlink -f "$0")")/bright.sh" pct; }
+bright_icon() { "$(dirname "$(readlink -f "$0")")/bright.sh" icon; }
 bright_text() { local p; p=$(bright_pct); printf 'Brightness %s%%' "${p:-?}"; }
 
 # system updates (count cached by updates-watch.sh; see autostart)
@@ -222,6 +232,8 @@ case "$1" in
   volt) vol_text ;;
   bat)  bat_icon ;;
   batt) bat_text ;;
+  pprof)  pprof_icon ;;
+  pproft) pprof_text ;;
   net)  net_icon ;;
   nett) net_text ;;
   netmode)   net_mode ;;
