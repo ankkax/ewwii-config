@@ -233,7 +233,7 @@ component Bar () {
             Nowplaying {}
         }
 
-        # centre: indicators (keep-awake) + clock + keyboard layout + weather + updates
+        # centre: indicators (keep-awake) + clock + weather + updates
         # (order follows Omarchy 4's bar layout, config/omarchy/shell.json)
         Box {
             class = "center"
@@ -262,8 +262,6 @@ component Bar () {
             Clock {}
             Weather {}
             Updates {}
-
-            KeyboardLayout {}
         }
 
         # right: indicators
@@ -273,6 +271,8 @@ component Bar () {
             space_evenly = false
             spacing = 2
             halign = "end"
+
+            KeyboardLayout {}
 
             Systray { icon_size = 16 spacing = 6 }
 
