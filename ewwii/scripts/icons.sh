@@ -13,10 +13,10 @@ I_VOL_OFF=$'\uf026'         # fa-volume_off
 I_VOL_LOW=$'\uf027'         # fa-volume_low
 I_VOL_UP=$'\uf028'          # fa-volume_up
 I_VOL_MUTE=$'\ueee8'        # fa-volume_xmark
-I_VOL_HEADPHONES=$'\uf025'  # fa-headphones
+I_VOL_HEADPHONES=$'\U000f02cb'  # fa-headphones
 
 # bluetooth
-I_BT=$'\uf294'              # fa-bluetooth_b
+I_BT=$'\U000f00af'              # fa-bluetooth_b
 I_BT_CONNECTED=$'\U000f00b1' # md-bluetooth_connect
 I_BT_OFF=$'\U000f00b2'      # md-bluetooth_off
 

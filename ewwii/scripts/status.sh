@@ -48,7 +48,7 @@ pprof_name() { "$(dirname "$(readlink -f "$0")")/pactive.sh" 2>/dev/null; }
 pprof_icon() {
   case "$(pprof_name)" in
     Quiet)       printf '%s' $'\U000f032a' ;;
-    Balanced)    printf '%s' $'\U000f0f85' ;;
+    Balanced)    printf '%s' $'\U000f029a' ;;
     Performance) printf '%s' $'\U000f04c5' ;;
   esac
 }

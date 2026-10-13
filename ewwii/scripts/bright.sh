@@ -52,12 +52,13 @@ set_abs() {
 }
 
 icon() {
-    local p
-    if [ -f "$DIM_FLAG" ]; then printf '%s' $'\U000f00dd'; return; fi   # moon: dimmed by idle
-    p=$(pct | tr -dc '0-9'); p=${p:-0}
-    if [ "$p" -le 30 ];   then printf '%s' $'\U000f00de'                # low
-    elif [ "$p" -le 60 ]; then printf '%s' $'\U000f00df'                # medium
-    else                       printf '%s' $'\U000f00e0'; fi            # high
+    # Omarchy's monitor glyph (one screen, or several); moon while dimmed by idle.
+    if [ -f "$DIM_FLAG" ]; then printf '%s' $'\U000f00dd'; return; fi
+    if [ "$(xrandr --listmonitors 2>/dev/null | head -1 | awk '{print $2}')" -gt 1 ] 2>/dev/null; then
+        printf '%s' $'\U000f037a'   # md-monitor_multiple
+    else
+        printf '%s' $'\U000f0379'   # md-monitor
+    fi
 }
 
 case "${1:-}" in
