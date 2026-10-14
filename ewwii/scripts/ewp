@@ -1,10 +1,10 @@
 #!/bin/bash
-# ewp -- ewwii for the pop-up panels and OSD (~/.config/ewwii-panels).
+# ewp -- ewwii for the pop-up panels and OSD (~/.config/ewwii/panels).
 #
 # The bar runs in its own daemon so it can appear quickly at login; the panels
 # load in a second daemon.  If that daemon is not running yet, it is started
 # here (and waited for) before the command is passed on.
-CFG="$HOME/.config/ewwii-panels"
+CFG="$HOME/.config/ewwii/panels"
 EWW=/usr/bin/ewwii
 
 case "${1:-}" in

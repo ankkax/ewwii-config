@@ -3,7 +3,7 @@
 #
 # Called once from oxwm autostart.  The bar has its own small config
 # (~/.config/ewwii) so its daemon is ready quickly; the pop-up panels and OSD
-# live in a second daemon (~/.config/ewwii-panels) that loads afterwards.
+# live in a second daemon (~/.config/ewwii/panels) that loads afterwards.
 
 EWW=/usr/bin/ewwii
 DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
