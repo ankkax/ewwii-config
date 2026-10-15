@@ -58,9 +58,9 @@ ws_args() {
     done
 }
 
-# Centre widgets: the update badge and the keyboard-layout indicator.
+# Centre widgets: the keyboard-layout indicator.
 centre_args() {
-    args+=("upd=$("$STS" upd)" "updt=$("$STS" updt)" "updstate=$("$STS" updstate)" "kblstate=$("$STS" kbstate)")
+    args+=("kblstate=$("$STS" kbstate)")
 }
 
 # Push only the values that changed since the last push.

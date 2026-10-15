@@ -69,9 +69,6 @@ Poll "ws6l" { interval = "3600s" initial = "7" cmd = "echo 7" }
 Poll "ws7l" { interval = "3600s" initial = "8" cmd = "echo 8" }
 Poll "ws8l" { interval = "3600s" initial = "9" cmd = "echo 9" }
 
-Poll "upd"      { interval = "3600s" initial = ""      cmd = "echo ''" }
-Poll "updt"     { interval = "3600s" initial = ""      cmd = "echo ''" }
-Poll "updstate" { interval = "3600s" initial = "false" cmd = "echo false" }
 Poll "kblstate" { interval = "3600s" initial = "false" cmd = "echo false" }
 
 # battery-percentage toggle (right-click on power widget)
@@ -195,17 +192,6 @@ component Weather () {
     }
 }
 
-component Updates () {
-    EventBox {
-        class = "mod upd"
-        visible = global("updstate")
-        tooltip = global("updt")
-        onclick = "setsid -f /usr/bin/kitty --class pacman-update -o remember_window_size=no -o initial_window_width=1200 -o initial_window_height=700 -e bash -c 'clear; echo \"=========================================\"; echo \"           SYSTEM UPDATE\"; echo \"           sudo pacman -Syu\"; echo \"=========================================\"; echo; sudo pacman -Syu; echo; echo \"=========================================\"; read -n1 -r -p \"Paina näppäintä sulkeaksesi\"'"
-
-        Label { text = global("upd") width = 21 xalign = 0.5 }
-    }
-}
-
 # right-hand indicators ---------------------------------------------------
 component Bar () {
     OverLay {
@@ -233,7 +219,7 @@ component Bar () {
             Nowplaying {}
         }
 
-        # centre: indicators (keep-awake) + clock + weather + updates
+        # centre: indicators (keep-awake) + clock + weather
         # (order follows Omarchy 4's bar layout, config/omarchy/shell.json)
         Box {
             class = "center"
@@ -261,7 +247,6 @@ component Bar () {
 
             Clock {}
             Weather {}
-            Updates {}
         }
 
         # right: indicators

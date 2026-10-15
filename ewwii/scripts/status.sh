@@ -117,12 +117,6 @@ bright_pct() { "$(dirname "$(readlink -f "$0")")/bright.sh" pct; }
 bright_icon() { "$(dirname "$(readlink -f "$0")")/bright.sh" icon; }
 bright_text() { local p; p=$(bright_pct); printf 'Brightness %s%%' "${p:-?}"; }
 
-# system updates (count cached by updates-watch.sh; see autostart)
-upd_count() { cat "$HOME/.cache/eww/updates" 2>/dev/null || echo 0; }
-upd_icon()  { local n; n=$(upd_count); if [ "${n:-0}" -gt 0 ] 2>/dev/null; then printf '%s' "$I_UPDATE"; fi; return 0; }
-upd_state() { local n; n=$(upd_count); if [ "${n:-0}" -gt 0 ] 2>/dev/null; then echo true; else echo false; fi; return 0; }
-upd_text()  { local n; n=$(upd_count); printf '%s system update(s) pending' "${n:-0}"; return 0; }
-
 # keyboard layout (shown only when more than one layout is configured, per Omarchy)
 kb_layouts() { setxkbmap -query 2>/dev/null | awk '/^layout:/{print $2}'; }
 kb_icon()  { kb_layouts | cut -d, -f1; }
@@ -242,9 +236,6 @@ case "$1" in
   btt)  bt_text ;;
   bright)   bright_icon ;;
   brightt)  bright_text ;;
-  upd)      upd_icon ;;
-  updstate) upd_state ;;
-  updt)     upd_text ;;
   kb)       kb_icon ;;
   kbstate)  kb_state ;;
   kbt)      kb_text ;;
